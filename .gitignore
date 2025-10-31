@@ -1,6 +1,11 @@
 old/
 tunnelc.exe
 tunnels.exe
+tunnelc
+tunnels
 link/
 cprf.ini
 .vscode/
+README.md
+.gdb_history
+test/

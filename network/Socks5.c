@@ -6,23 +6,29 @@
 #include "network.h"
 
 extern WorkConnection WorkConnections;
-
+extern Vector *Online;
 void Socks5onServer(mSOCKET fathersock,Config *common, ProxyConfig *pc){
     mSOCKET Socks5ServerSock = mSocket("tcp");
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(pc->remote_port);
     addr.sin_addr.s_addr = inet_addr(common->addr);
-
+    
     if(bind(Socks5ServerSock, (struct sockaddr *)&addr, sizeof(addr)) == -1){
         logger(LOG_ERROR,pc->name,"Port is Aready in Use!!!");
         return;
     }
 
-    // create_thread(checkAliveThread,&(checkAliveThreadArg){fathersock,Socks5ServerSock});
+    for(int i = 0;i<Online->Volume;i++){
+        OnlineClient *oc = (OnlineClient*)vGet(Online,i);
+        if(oc->fathersock == fathersock){
+            vAdd(oc->clients,&Socks5ServerSock);
+            break;
+        }
+    }
 
     listen(Socks5ServerSock,1000);
-    logger(LOG_INFO,pc->name,"Socks5 Server Started On %d\n",pc->remote_port);
+    logger(LOG_INFO,pc->name,"Socks5 Server Started On %s:%d\n",common->addr,pc->remote_port);
     
     int optval = 1;
     #ifdef SO_EXCLUSIVEADDRUSE
@@ -44,12 +50,20 @@ void Socks5onServer(mSOCKET fathersock,Config *common, ProxyConfig *pc){
 
     while(1){
         outsiderSock = accept(Socks5ServerSock,(struct sockaddr*)&outsider,&outsiderSize);
-        if (outsiderSock == INVALID_SOCKET) {
-            continue;
+        
+        char error[]={5};
+        int len = sizeof(int);
+        if (getsockopt(Socks5ServerSock,0xffff,0x1007, error, &len) < 0){
+            logger(LOG_INFO,pc->name,"Client %s:%d OffLine\n",inet_ntoa(outsider.sin_addr), ntohs(outsider.sin_port));
+            return;
+        }
+
+        if (outsiderSock == 0) {
+            getLastError();
+            break;
         }
 
         args->childsock = outsiderSock;
-        //SocksOnServerTask1 fathersock,outsiderSock,common,pc);
         create_thread(SocksOnServerTask1Thread, args);
     }
 }
@@ -76,7 +90,7 @@ void Socks5onClient(Config *common,ProxyConfig *proxy){
 
     while(1){
         clientsock = accept(Socks5onClientSock,(struct sockaddr*)&addr,&(int){sizeof(addr)});
-        if (clientsock == INVALID_SOCKET) {
+        if (clientsock == 0) {
             continue;
         }
 
@@ -92,7 +106,7 @@ void SocksOnServerTask1(mSOCKET fathersock,mSOCKET childsock,Config *common, Pro
     int cout = 0;
     while (workC == NULL){
         send(fathersock,WorkConnectAdd,strlen(WorkConnectAdd),0);
-        Sleep(3);
+        mSleep(3);
         workC = getWorkConnection(fathersock);
         cout++;
         if (cout > 5){
@@ -165,7 +179,7 @@ void Socks5onClientTask1(mSOCKET ClientSock,struct sockaddr_in clientAddr,ProxyC
             send(ClientSock, "\x05\x00",2, 0);
         }else{
             send(ClientSock, "\x05\x01",2, 0);
-            logger(LOG_WARN, proxy->name,"[%s] Client %s:%d Authentication Failed\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+            logger(LOG_WARN, proxy->name,"Client %s:%d Authentication Failed\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
             closeSocket(ClientSock);
             return;
         }
@@ -185,12 +199,12 @@ void Socks5onClientTask1(mSOCKET ClientSock,struct sockaddr_in clientAddr,ProxyC
 
             // printf("IPv4:%s",inet_ntoa(*(struct in_addr*)&buf[4]));
             // printf("Port:%d\n",ntohs(*(unsigned short*)&buf[8]));
-            SOCKET toSock = socket(AF_INET, SOCK_STREAM, 0);
+            mSOCKET toSock = socket(AF_INET, SOCK_STREAM, 0);
             struct sockaddr_in toAddr;
             toAddr.sin_family = AF_INET;
             toAddr.sin_port = *(unsigned short*)&buf[8];
             toAddr.sin_addr.s_addr = *(unsigned int*)&buf[4];
-            if (connect(toSock,(struct sockaddr*)&toAddr,sizeof(toAddr)) == SOCKET_ERROR){
+            if (connect(toSock,(struct sockaddr*)&toAddr,sizeof(toAddr)) == -1){
                 char response[10];
                 response[0] = 0x05;
                 response[1] = 0X05;
@@ -218,12 +232,12 @@ void Socks5onClientTask1(mSOCKET ClientSock,struct sockaddr_in clientAddr,ProxyC
             struct addrinfo *hints = (struct addrinfo*)malloc(sizeof(struct addrinfo));
             getaddrinfo(Domain,NULL,NULL,&hints);
             struct sockaddr_in *si = (struct sockaddr_in*)(hints->ai_addr);
-            SOCKET toSock = socket(AF_INET, SOCK_STREAM, 0);
+            mSOCKET toSock = socket(AF_INET, SOCK_STREAM, 0);
             struct sockaddr_in toAddr;
             toAddr.sin_family = AF_INET;
             toAddr.sin_port = *(unsigned short*)&buf[4+DomainLen];
             toAddr.sin_addr.s_addr = si->sin_addr.s_addr;
-            if (connect(toSock,(struct sockaddr*)&toAddr,sizeof(toAddr)) == SOCKET_ERROR){
+            if (connect(toSock,(struct sockaddr*)&toAddr,sizeof(toAddr)) == -1){
                 char response[10];
                 response[0] = 0x05;
                 response[1] = 0X04;

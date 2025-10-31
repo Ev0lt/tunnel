@@ -13,4 +13,6 @@
 
 #define AuthSuccess "authsuccess"
 
+#define Alive "AliveLine"
+
 #endif

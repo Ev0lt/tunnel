@@ -46,11 +46,6 @@ typedef struct{
 
 void *workThread(void *arg);
 
-typedef struct alive{
-    mSOCKET fsock;
-    mSOCKET csock;
-}checkAliveThreadArg;
-
 void *checkAliveThread(void *arg);
 
 #endif //THREADING_H

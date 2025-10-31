@@ -5,8 +5,10 @@
 #include "../common/tools.h"
 #include "../common/threading.h"
 #include <math.h>
+#include <stdio.h>
 
 extern WorkConnection *WorkConnections;
+extern Vector *Online;
 
 void ServerProcess(mSOCKET sock, struct sockaddr_in Addr, Config *common){
     char *buf = (char*)malloc(pow(2,22));
@@ -21,7 +23,7 @@ void ServerProcess(mSOCKET sock, struct sockaddr_in Addr, Config *common){
         logger(LOG_INFO,"ServerConsole","New Workconnection from %s:%d",inet_ntoa(Addr.sin_addr), ntohs(Addr.sin_port));
         send(sock,ProtoWorkConnEnd,strlen(ProtoWorkConnEnd),0);
         recv(sock,buf,10,0);
-        logger(LOG_DEBUG,"WorkConnection","Recv ProtoWorkConnEnd: %s",buf);
+        logger(LOG_DEBUG,"WorkConnection","Recv ProtoWorkConnEnd: %s",trim(buf,12));
         mSOCKET sockid = atoi(trim(buf,10));
         addWorkConnection(sockid,sock);
         logger(LOG_DEBUG,"WorkConnection","Send ProtoWorkConnEnd: %s",ProtoWorkConnEnd);
@@ -49,13 +51,35 @@ void ServerProcess(mSOCKET sock, struct sockaddr_in Addr, Config *common){
         logger(LOG_INFO,"ServerConsole","Auth Success from %s:%d",inet_ntoa(Addr.sin_addr), ntohs(Addr.sin_port));
         send(sock,AuthSuccess,strlen(AuthSuccess),0);
         memset(buf,'\xff',strlen(buf));
-        itoa(sock,buf,10);
+        // itoa(sock,buf,10);
+        sprintf(buf,"%d",sock);
         send(sock,buf,10,0);
     }
 
+    logger(LOG_INFO,"ServerConsole","Init HeartBeat line");
+    WorkConnection *wc = getWorkConnection(sock);
+    int cout = 0;
+    while (wc == NULL){
+        send(sock,WorkConnectAdd,strlen(WorkConnectAdd),0);
+        mSleep(3);
+        wc = getWorkConnection(sock);
+        cout++;
+        if (cout > 5){
+            logger(LOG_WARN,common->name,"Busy,Init HearBeat Line Failed...");
+            return;
+        }
+    }
+    send(wc->conn,Alive,strlen(Alive),0);
+    logger(LOG_INFO,common->name,"Init HearBeat Line Success...");
+    OnlineClient *oc = (OnlineClient*)malloc(sizeof(OnlineClient));
+    oc->fathersock = sock;
+    oc->clients = initVector(sizeof(mSOCKET));
+    vAdd(Online,oc);
+    create_thread(checkAliveThread, &wc->conn);
+
     ProxyConfig *next = clientConfig->next;
     StartConfigArg *args = (StartConfigArg*)malloc(sizeof(StartConfigArg));
-    args->common = clientConfig;
+    args->common = common;
     args->fathersock = sock;
     while(next!=NULL){
         args->proxy = next;

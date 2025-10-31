@@ -8,21 +8,21 @@ endif
 
 ifeq ($(OS),Windows)
 
-tunnels:server.o tools.o platform.o config.o threading.o entry.o network.o Socks5.o
-	gcc -g link/server.o link/tools.o link/platform.o link/config.o link/threading.o link/entry.o link/network.o link/Socks5.o -o tunnels.exe -lws2_32
+tunnels:server.o tools.o platform.o config.o threading.o entry.o network.o Socks5.o vector.o
+	gcc -g link/server.o link/tools.o link/platform.o link/config.o link/threading.o link/entry.o link/network.o link/Socks5.o link/vector.o -o tunnels.exe -lws2_32
 
-tunnelc:client.o tools.o platform.o config.o threading.o entry.o network.o Socks5.o
-	gcc -g link/client.o link/tools.o link/platform.o link/config.o link/threading.o link/entry.o link/network.o link/Socks5.o -o tunnelc.exe -lws2_32
+tunnelc:client.o tools.o platform.o config.o threading.o entry.o network.o Socks5.o vector.o
+	gcc -g link/client.o link/tools.o link/platform.o link/config.o link/threading.o link/entry.o link/network.o link/Socks5.o link/vector.o -o tunnelc.exe -lws2_32
 
 test: test.o tools.o platform.o
 	gcc -g link/test.o link/tools.o link/platform.o -o test -lws2_32
 
 else ifeq ($(OS),Linux)
-tunnels:server.o tools.o platform.o config.o threading.o entry.o network.o Socks5.o
-	gcc -g link/server.o link/tools.o link/platform.o link/config.o link/threading.o link/entry.o link/network.o link/Socks5.o -o frps
+tunnels:server.o tools.o platform.o config.o threading.o entry.o network.o Socks5.o vector.o
+	gcc -g link/server.o link/tools.o link/platform.o link/config.o link/threading.o link/entry.o link/network.o link/Socks5.o link/vector.o -o tunnels
 
-tunnelc:client.o tools.o platform.o config.o threading.o entry.o network.o Socks5.o
-	gcc -g link/client.o link/tools.o link/platform.o link/config.o link/threading.o link/entry.o link/network.o link/Socks5.o -o frpc
+tunnelc:client.o tools.o platform.o config.o threading.o entry.o network.o Socks5.o vector.o
+	gcc -g link/client.o link/tools.o link/platform.o link/config.o link/threading.o link/entry.o link/network.o link/Socks5.o link/vector.o -o tunnelc
 
 test: test.o tools.o platform.o
 	gcc -g link/test.o link/tools.o link/platform.o -o test
@@ -60,6 +60,9 @@ Socks5.o: network/Socks5.c
 
 entry.o: network/entry.c
 	gcc -g -c network/entry.c -o link/entry.o
+
+vector.o: common/vector.c
+	gcc -g -c common/vector.c -o link/vector.o
 
 clean:
 	rm -rf link/*.o

@@ -4,11 +4,11 @@
 #include "../common/threading.h"
 #include "../common/protocol.h"
 #include "../network/network.h"
-
+#include "../common/vector.h"
 #include <math.h>
 
 WorkConnection *WorkConnections;
-
+Vector *Online;
 int main(){
     WorkConnections = (WorkConnection*)malloc(sizeof(WorkConnection));
     WorkConnections->conn = 0;
@@ -17,7 +17,7 @@ int main(){
     Config cnf;
     char *cnfName = "tunnelc.ini";
     parse_config(cnfName,&cnf,true);
-    set_logLevel(cnf.logLevel);
+    // set_logLevel(cnf.logLevel);
     socketInit();
    
     mSOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -49,10 +49,10 @@ int main(){
         return -1;
     }
 
-    if(buf == AuthFaild){
+    if(strncmp(buf,AuthFaild,strlen(AuthFaild)) == 0){
         logger(LOG_WARN,"ServerConsole","AuthCode Error!!,Please check your config file");
         return -1;
-    }else if(buf == AuthSuccess){
+    }else if(strncmp(buf,AuthSuccess,strlen(AuthSuccess)) == 0){
         logger(LOG_INFO,"ServerConsole","Auth Success!!\n");
     }
 

@@ -95,7 +95,11 @@ void logger(debug_level levl,char* name,char *fmt, ...){
             if(is_dir(LOG_FILE)){
                 sprintf(name, "%s/tunnelServer-%s.log", LOG_FILE, timestamp);
             }else{
-                mkdir(LOG_FILE);
+                #ifdef _WIN32
+                    mkdir(LOG_FILE);
+                #else
+                    mkdir(LOG_FILE, 0777);
+                #endif 
                 sprintf(name, "%s/tunnelServer-%s.log", LOG_FILE,timestamp);
             }
             FILE *fp = fopen(name, "a");

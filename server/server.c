@@ -3,10 +3,12 @@
 #include "../common/config.h"
 #include "../common/threading.h"
 #include "../network/network.h"
-
+#include "../common/vector.h"
 WorkConnection *WorkConnections;
+Vector *Online;
 
 int main(){
+    Online = initVector(sizeof(OnlineClient));
     WorkConnections = (WorkConnection*)malloc(sizeof(WorkConnection));
     WorkConnections->next = NULL;
     WorkConnections->father = 0;
@@ -15,7 +17,7 @@ int main(){
     Config cnf;
     char *cnfName = "tunnels.ini";
     parse_config(cnfName,&cnf,true);
-    set_logLevel(LOG_INFO);
+    // set_logLevel(LOG_INFO);
     socketInit();
 
     mSOCKET sock = mSocket("TCP");

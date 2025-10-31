@@ -30,4 +30,5 @@ mSOCKET mSocket(char* type);
 void closeSocket(mSOCKET sock);
 void getLastError();
 int mPoll(struct pollfd *fds, int nfds, int timeout);
+void mSleep(int milliseconds);
 #endif //PLATFORM_H

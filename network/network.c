@@ -3,8 +3,10 @@
 #include "../common/tools.h"
 #include "../common/protocol.h"
 #include "../common/threading.h"
+#include <stdio.h>
 
 extern WorkConnection *WorkConnections;
+extern Vector *Online;
 
 WorkConnection *getLastWorkConnection(){
     bool last = WorkConnections->next == NULL ? false : true;
@@ -136,10 +138,11 @@ int create_WorkConnection(mSOCKET fathersock,int num,Config *common){
             continue;
         }
         memset(buf,0xff,12);
-        itoa(fathersock,tmp,10);
-        strncpy(buf,tmp,12);
+        // itoa(fathersock,tmp,10);
+        sprintf(tmp,"%d",fathersock);
+        strncpy(buf,tmp,strlen(tmp));
         send(workconn,buf,10,0);
-        logger(LOG_DEBUG,"WorkConnection","send father sockid %s",buf);
+        logger(LOG_DEBUG,"WorkConnection","send father sockid %s",trim(buf,12));
         addWorkConnection(fathersock,workconn);
 
         workThreadArg *arg = malloc(sizeof(workThreadArg));
@@ -150,7 +153,7 @@ int create_WorkConnection(mSOCKET fathersock,int num,Config *common){
     return 0;
 }
 
-void Relay(SOCKET fromSock, SOCKET toSock){
+void Relay(mSOCKET fromSock, mSOCKET toSock){
     char buf[4096];
     int len;
     fd_set readfds;
@@ -187,6 +190,9 @@ void work(mSOCKET sock,Config *Common){
         delWorkConn(sock);
         return;
     }
+    if(strncmp(buf,Alive,strlen(Alive)) == 0){
+        return;
+    }
     ProxyConfig *next = Common->next;
     while(next != NULL){
         logger(LOG_DEBUG,"DEBUG","config name: %s",next->name);
@@ -212,14 +218,36 @@ void work(mSOCKET sock,Config *Common){
     delWorkConn(sock);
 }
 
-void checkAlive(mSOCKET fsock,mSOCKET csock){
-    WorkConnection* wc = getWorkConnection(fsock);
-    while (wc == NULL){
-        send(fsock,WorkConnectAdd,strlen(WorkConnectAdd),0);
-        Sleep(1);
-        wc = getWorkConnection(fsock);
+void checkAlive(mSOCKET fsock){
+    OnlineClient *OC;
+    int i = 0;
+    for(;i<Online->Volume;i++){
+        OC = (OnlineClient*)vGet(Online,i);
+        if(OC->fathersock == fsock){
+            break;
+        }
     }
-    recv(wc->conn,NULL,0,0);
-    closeSocket(csock);
-    delWorkConn(fsock);
+
+    if(OC == NULL){
+        return;
+    }
+    Vector *clients = OC->clients;
+    recv(fsock,NULL,0,0);
+    closeSocket(fsock);
+    for(int j = 0;j<clients->Volume;j++){
+        mSOCKET csock = *(mSOCKET*)vGet(clients,j);
+        closeSocket(csock);
+        csock = 0;
+        delWorkConnFromfather(fsock);
+    }
+
+    for(i=0;i<Online->Volume;i++){
+        OC = (OnlineClient*)vGet(Online,i);
+        if(OC->fathersock == fsock){
+            vDel(Online,i);
+            break;
+        }
+    }
+    closeSocket(fsock);
+    logger(LOG_INFO,"ServerConsole","Client %d Disconnected,All Related Proxies Closed",fsock);
 }

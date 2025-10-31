@@ -3,9 +3,9 @@
 
 #include "../common/platform.h"
 #include "../common/config.h"
-
+#include "../common/vector.h"
+#include <stdlib.h>
 #include <stdbool.h>
-
 
 typedef struct WorkConnection{
     mSOCKET father;
@@ -26,10 +26,15 @@ WorkConnection *getWorkConnection(mSOCKET father);
 
 int create_WorkConnection(mSOCKET fathersock,int num,Config *common);
 
-void Relay(SOCKET fromSock, SOCKET toSock);
+void Relay(mSOCKET fromSock, mSOCKET toSock);
 
 void work(mSOCKET sock,Config *Common);
 
-void checkAlive(mSOCKET fsock,mSOCKET csock);
+void checkAlive(mSOCKET fsock);
+
+typedef struct OnlineClient{
+    mSOCKET fathersock;
+    Vector *clients;
+}OnlineClient;
 
 #endif

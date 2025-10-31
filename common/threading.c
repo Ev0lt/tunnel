@@ -33,6 +33,5 @@ void *workThread(void *arg){
 }
 
 void *checkAliveThread(void *arg){
-    checkAliveThreadArg *al = (checkAliveThreadArg *)arg;
-    checkAlive(al->fsock,al->csock);
+    checkAlive(*(mSOCKET*)arg);
 }
